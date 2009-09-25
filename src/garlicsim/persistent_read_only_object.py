@@ -4,7 +4,9 @@ todo: need to lock library to avoid thread trouble?
 todo: need to raise an exception if we're getting pickled with
 an old protocol?
 
-todo: make it polite to other classes that use __new__
+todo: make it polite to other classes that use __new__. Therefore, should
+probably work not only when there is only one item in the *args passed to new.
+
 """
 
 import uuid
@@ -31,8 +33,9 @@ class PersistentReadOnlyObject(object):
                 thing._PersistentReadOnlyObject__skip_setstate = True
                 return thing
             else: # This object does not exist in our library yet; Let's add it
+                new_args = args[1:]
                 thing = super(PersistentReadOnlyObject, cls).__new__(cls,
-                                                                     *args,
+                                                                     *new_args,
                                                                      **kwargs)
                 thing._PersistentReadOnlyObject__uuid = received_uuid
                 library[received_uuid] = thing
@@ -40,7 +43,8 @@ class PersistentReadOnlyObject(object):
                 
         else:
             # This section is for when we are called at normal creation time
-            thing = super(PersistentReadOnlyObject, cls).__new__(cls)
+            thing = super(PersistentReadOnlyObject, cls).__new__(cls, *args,
+                                                                 **kwargs)
             new_uuid = uuid.uuid4()
             thing._PersistentReadOnlyObject__uuid = new_uuid
             library[new_uuid] = thing
