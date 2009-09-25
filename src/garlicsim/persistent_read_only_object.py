@@ -4,7 +4,7 @@ todo: need to lock library to avoid thread trouble?
 todo: need to raise an exception if we're getting pickled with
 an old protocol?
 
-todo: make it polite to other similar classes
+todo: make it polite to other classes that use __new__
 """
 
 import uuid
@@ -31,7 +31,9 @@ class PersistentReadOnlyObject(object):
                 thing._PersistentReadOnlyObject__skip_setstate = True
                 return thing
             else: # This object does not exist in our library yet; Let's add it
-                thing = super(PersistentReadOnlyObject, cls).__new__(cls)
+                thing = super(PersistentReadOnlyObject, cls).__new__(cls,
+                                                                     *args,
+                                                                     **kwargs)
                 thing._PersistentReadOnlyObject__uuid = received_uuid
                 library[received_uuid] = thing
                 return thing
