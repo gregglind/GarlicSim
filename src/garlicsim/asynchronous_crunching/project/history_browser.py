@@ -1,6 +1,11 @@
+# Copyright 2009 Ram Rachum.
+# This program is distributed under the LGPL2.1 license.
+
 """
 This module defines the HistoryBrowser class. See its documentation
 for more info.
+
+todo: change "our leaf" to "our node", since it might not be a leaf.
 
 todo: this needs testing
 """
@@ -8,12 +13,12 @@ import threading
 
 import crunchers
 
+import garlicsim.history_browser_abc
+
 import garlicsim.misc.binary_search as binary_search
 import garlicsim.misc.queue_tools as queue_tools
 
 __all__ = ["HistoryBrowser"]
-
-get_state_clock = lambda state: state.clock
 
 def with_self(method):
     """
@@ -25,7 +30,7 @@ def with_self(method):
             return method(self, *args, **kwargs)
     return fixed
 
-class HistoryBrowser(object):
+class HistoryBrowser(garlicsim.history_browser_abc.HistoryBrowserABC):
     """
     A HistoryBrowser is a device for requesting information about the history
     of the simulation.
@@ -70,7 +75,7 @@ class HistoryBrowser(object):
     @with_self
     def get_last_state(self):
         """
-        Syntactic sugar for getting the last state in the timeline.
+        Gets the last state in the timeline. Identical to __getitem__(-1).
         """
         return self[-1]
     
@@ -96,9 +101,9 @@ class HistoryBrowser(object):
             # The requested state is in the tree
             queue_size = self.cruncher.work_queue.qsize()
             new_index = index + queue_size
-            our_leaf = self.__get_our_leaf()
-            path = our_leaf.make_containing_path()
-            result_node = path.__getitem__(new_index, end_node=our_leaf)
+            our_node = self.__get_our_node()
+            path = our_node.make_containing_path()
+            result_node = path.__getitem__(new_index, end_node=our_node)
             return result_node.state
             
     
@@ -107,14 +112,14 @@ class HistoryBrowser(object):
         """
         Used when __getitem__ is called with a positive index.
         """
-        our_leaf = self.__get_our_leaf()
-        path = our_leaf.make_containing_path()
+        our_node = self.__get_our_node()
+        path = our_node.make_containing_path()
         try:
-            result_node = path.__getitem__(index, end_node=our_leaf)
+            result_node = path.__getitem__(index, end_node=our_node)
             return result_node.state
         
         except IndexError:
-            path_length = path.__len__(end_node=our_leaf)
+            path_length = path.__len__(end_node=our_node)
             # todo: Probably inefficient: We're plowing through the path again.
             new_index = index - path_length
             try:
@@ -129,9 +134,6 @@ class HistoryBrowser(object):
                           " states in the queue."
                 raise IndexError(message)
         
-        
-            
-    
     @with_self
     def __get_item_from_queue(self, index):
         """
@@ -140,22 +142,9 @@ class HistoryBrowser(object):
         item = queue_tools.queue_get_item(self.cruncher.work_queue, index)
         return item
         
-    
     @with_self
-    def request_state_by_clock(self, clock, rounding="Closest"):
-        """
-        Requests a state by specifying desired clock time.
-        
-        See documentation of garlicsim.misc.binary_search.binary_search for
-        details about rounding options.
-        """
-        assert rounding in ["High", "Low", "Exact", "Both", "Closest"]
-        return self.request_state_by_monotonic_function\
-               (function=get_state_clock, value=clock, rounding=rounding)
-    
-    @with_self
-    def request_state_by_monotonic_function(self, function, value,
-                                            rounding="Closest"):
+    def get_state_by_monotonic_function(self, function, value,
+                                        rounding="Closest"):
         """
         Requests a state by specifying a measure function and a desired value.
         The function must be a monotonic rising function on the timeline.
@@ -165,7 +154,7 @@ class HistoryBrowser(object):
         """
         assert rounding in ["High", "Low", "Exact", "Both", "Closest"]
         
-        tree_result = self.request_state_by_monotonic_function_from_tree\
+        tree_result = self.__get_state_by_monotonic_function_from_tree \
                       (function, value, rounding="Both")
         
         if tree_result[1] is not None:
@@ -174,7 +163,7 @@ class HistoryBrowser(object):
                    (tree_result, function, value, rounding)
         
         else:
-            queue_result = self.request_state_by_monotonic_function_from_queue\
+            queue_result = self.__get_state_by_monotonic_function_from_queue \
                            (function, value, rounding="Both")
             none_count = queue_result.count(None)
             if none_count == 0:
@@ -192,8 +181,8 @@ class HistoryBrowser(object):
                            (queue_result, function, value, rounding)
                 else: # queue_result[0] == None
                     """
-                    Getting tricky: The result is somewhere in the middle between
-                    the queue and the tree.
+                    Getting tricky: The result is somewhere in the middle
+                    between the queue and the tree.
                     """
                     combined_result = [tree_result[0], queue_result[1]]
                     return binary_search.make_both_data_into_preferred_rounding\
@@ -207,8 +196,8 @@ class HistoryBrowser(object):
                        (tree_result, function, value, rounding)
             
     @with_self   
-    def request_state_by_monotonic_function_from_tree(self, function, value,
-                                                      rounding="Closest"):
+    def __get_state_by_monotonic_function_from_tree(self, function, value,
+                                                    rounding="Closest"):
         """
         Requests a state FROM THE TREE ONLY by specifying a measure function
         and a desired value.
@@ -218,8 +207,8 @@ class HistoryBrowser(object):
         details about rounding options.
         """
         assert rounding in ["High", "Low", "Exact", "Both", "Closest"]
-        our_leaf = self.__get_our_leaf()
-        path = our_leaf.make_containing_path()
+        our_node = self.__get_our_node()
+        path = our_node.make_containing_path()
         new_function = lambda node: function(node.state)
         result_in_nodes = path.get_node_by_monotonic_function \
                         (new_function, value, rounding)
@@ -228,8 +217,8 @@ class HistoryBrowser(object):
         return result
     
     @with_self
-    def request_state_by_monotonic_function_from_queue(self, function, value,
-                                                       rounding="Closest"):
+    def __get_state_by_monotonic_function_from_queue(self, function, value,
+                                                     rounding="Closest"):
         """
         Requests a state FROM THE QUEUE ONLY by specifying a measure function
         and a desired value.
@@ -250,29 +239,39 @@ class HistoryBrowser(object):
     
     @with_self
     def __len__(self):
-        pass
+        """
+        Returns the length of the timeline in nodes, which means the sum of:
+        1. The length of the work_queue of our cruncher.
+        2. The length of the path in the tree which leads to our node, up to
+           our node.
+        """
+        queue_length = self.cruncher.work_queue.qsize()
+        
+        our_node = self.__get_our_node()
+        our_path = our_node.make_containing_path()
+        path_length = our_path.__len__(end_node = our_node)
+        
+        return queue_length + path_length
     
     @with_self
-    def __get_our_leaf(self):
+    def __get_our_node(self):
         """
-        Returns the leaf that the current cruncher is assigned to work on.
+        Returns the node that the current cruncher is assigned to work on.
         """
         
         current_thread = threading.currentThread()  
         
-        leaves_to_crunchers = self.project.crunching_manager.crunchers.items()
+        nodes_to_crunchers = self.project.crunching_manager.crunchers.items()
         
-        leaves_that_are_us = \
-            [leaf for (leaf, cruncher) in leaves_to_crunchers\
+        nodes_that_are_us = \
+            [node for (node, cruncher) in nodes_to_crunchers \
              if cruncher == current_thread]
         
-        num = len(leaves_that_are_us)
+        num = len(nodes_that_are_us)
         assert num <= 1
         if num == 1:
-            our_leaf = leaves_that_are_us[0]
+            our_node = nodes_that_are_us[0]
         else: # num == 0
             raise crunchers.ObsoleteCruncherError
-        return our_leaf
-    
-    
-    
+        return our_node
+        

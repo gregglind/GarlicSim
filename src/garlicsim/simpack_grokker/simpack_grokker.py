@@ -1,31 +1,50 @@
+# Copyright 2009 Ram Rachum.
+# This program is distributed under the LGPL2.1 license.
+
 """
-A module that defined the SimpackGrokker class. See its documentation
-for more details.
+This module defines the SimpackGrokker class and the InvalidSimpack exception.
+See their documentation for more details.
 """
 
 import functools
 
-__all__ = ["SimpackGrokker"]
+from step_function_manipulators import \
+     simple_history_step_from_step_generator, \
+     simple_non_history_step_from_step_generator, \
+     non_history_step_generator_from_simple_step, \
+     history_step_generator_from_simple_step
+
+__all__ = ["SimpackGrokker", "InvalidSimpack"]
+
+class InvalidSimpack(Exception):
+    """
+    An exception to raise when trying to load an invalid simpack.
+    """
+    pass
 
 class SimpackGrokker(object):
     """
     An object that encapsulates a simpack, giving useful information about it
-    that may not be directly specified in the simpack.
-    
-    When a SimpackGrokker loads a simpack, it checks whether it is
-    history-dependent. It puts the answer in its attribute `history_dependent`.
+    and tools to use with it.
     """
     def __init__(self, simpack):
         self.simpack = simpack
-        
+        self.__init_analysis()
+        self.__init_step()
+        self.step.history_dependent = self.history_step_defined
+        self.__init_step_generator()
     
+    def __init_analysis(self):
+        """
+        Analyzes the simpack.
+        """
+        simpack = self.simpack
         self.simple_non_history_step_defined = hasattr(simpack, "step")
         self.non_history_step_generator_defined = \
             hasattr(simpack, "step_generator")
         self.simple_history_step_defined = hasattr(simpack, "history_step")
         self.history_step_generator_defined = hasattr(simpack,
                                                       "history_step_generator")
-        
         
         self.non_history_step_defined = \
             (self.simple_non_history_step_defined or \
@@ -40,27 +59,23 @@ class SimpackGrokker(object):
         self.step_generator_defined = \
             (self.non_history_step_generator_defined or \
              self.history_step_generator_defined)
-
         
         if self.history_step_defined and self.non_history_step_defined:
-            raise StandardError("The simulation package is defining both a \
-                                 history-dependent step and a \
-                                 non-history-dependent step - That's \
-                                 forbidden!")
+            raise InvalidSimpack("""The simulation package is defining both a \
+            history-dependent step and a non-history-dependent step - which \
+            is forbidden.""")
         
-        assert self.simple_step_defined or self.step_generator_defined
-        
+        if not (self.simple_step_defined or self.step_generator_defined):
+            raise InvalidSimpack("""The simulation package has not defined any
+            kind of step function.""")
         
         self.history_dependent = self.history_step_defined
         
-        self.__init_step()
-        self.step.history_dependent = self.history_step_defined
-        
-        self.__init_step_generator()
-        
-    
     def __init_step_generator(self):
-        
+        """
+        Obtains a step generator; If the simpack defines one, uses it,
+        otherwise creates one from the simple step function.
+        """
         if self.step_generator_defined:
             """
             The simpack supplies a step generator, so we're gonna use that.
@@ -92,12 +107,12 @@ class SimpackGrokker(object):
                 self.step_generator = functools.partial \
                     (non_history_step_generator_from_simple_step, self.step)
                 return
-                
-        
-    def step_generator(self, old_state_or_history_browser, *args, **kwargs):
-        raise NotImplementedError
     
     def __init_step(self):
+        """
+        Obtains a simple step function; If the simpack defines one, uses it,
+        otherwise creates one from the step generator.
+        """
         if self.simple_step_defined:
             """
             If the simpack defines a simple step, we'll just point to that.
@@ -108,7 +123,6 @@ class SimpackGrokker(object):
             else: # It's non-history dependent
                 self.step = self.simpack.step
                 return
-                
         else:
             if self.history_dependent:
                 
@@ -116,38 +130,14 @@ class SimpackGrokker(object):
                     (simple_history_step_from_step_generator,
                      self.simpack.history_step_generator)
                 return
-                    
             else: # It's non-history dependent
-                
                 self.step = functools.partial \
                     (simple_non_history_step_from_step_generator,
                      self.simpack.step_generator)
-                return
-        
+                return    
         
     def step(self, old_state_or_history_browser, *args, **kwargs):
         raise NotImplementedError
-        
     
-
-def non_history_step_generator_from_simple_step(step_function, old_state,
-                                                *args, **kwargs):
-    current = old_state
-    while True:
-        current = step_function(current, *args, **kwargs)
-        yield current
-        
-def history_step_generator_from_simple_step(step_function, history_browser,
-                                            *args, **kwargs):
-    while True:
-        yield step_function(history_browser, *args, **kwargs)
-        
-def simple_non_history_step_from_step_generator(generator, history_browser,
-                                                *args, **kwargs):
-    iterator = generator(history_browser, *args, **kwargs)
-    return iterator.next()
-
-def simple_history_step_from_step_generator(generator, old_state,
-                                            *args, **kwargs):
-    iterator = generator(old_state, *args, **kwargs)
-    return iterator.next()
+    def step_generator(self, old_state_or_history_browser, *args, **kwargs):
+        raise NotImplementedError

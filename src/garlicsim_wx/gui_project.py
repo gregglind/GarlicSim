@@ -1,3 +1,6 @@
+# Copyright 2009 Ram Rachum.
+# This program is not licensed for distribution and may not be distributed.
+
 import wx
 import wx.lib.scrolledpanel as scrolled
 
@@ -221,7 +224,7 @@ class GuiProject(object):
     def __editing_state(self):
         node=self.active_node
         state=node.state
-        if node.is_touched() is False or node.still_in_editing is False:
+        if node.touched is False or node.still_in_editing is False:
             new_node=self.edit_from_active_node()
             return new_node.state
         else:
@@ -245,7 +248,7 @@ class GuiProject(object):
         self.active_node = node
         try:
             next_node = self.path.next_node(node)
-        except IndexError:
+        except garlicsim.data_structures.path.PathOutOfRangeError:
             self.ran_out_of_tree_while_playing = True
             return
         
@@ -266,10 +269,10 @@ class GuiProject(object):
         """
         
         node = self.active_node
-        if self.project.leaves_to_crunch.has_key(node):
+        if self.project.nodes_to_crunch.has_key(node):
             return # Problem: Node is already a leaf. Todo.
         else:
-            self.project.leaves_to_crunch[node] = self.default_buffer
+            self.project.nodes_to_crunch[node] = self.default_buffer
 
     def edit_from_active_node(self,*args,**kwargs):
         """
@@ -278,7 +281,7 @@ class GuiProject(object):
         editing.
         Returns the new node.
         """
-        new_node = self.project.tree.new_touched_state(template_node=self.active_node)
+        new_node = self.project.tree.fork_by_editing(template_node=self.active_node)
         new_node.still_in_editing = True
         self.set_active_node(new_node)
         return new_node

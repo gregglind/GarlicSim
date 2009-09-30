@@ -1,3 +1,6 @@
+# Copyright 2009 Ram Rachum.
+# This program is not licensed for distribution and may not be distributed.
+
 import garlicsim.data_structures
 import copy
 
@@ -30,7 +33,7 @@ def history_step(history_browser, t=0.1, *args, **kwargs):
     new_state.left_vel += random.random() * 0.2 - 0.1
     new_state.left += new_state.left_vel * t
     
-    past_state = history_browser.request_state_by_clock(new_state.clock - 20)
+    past_state = history_browser.get_state_by_clock(new_state.clock - 20)
     if past_state is not None:
         new_state.right = past_state.left
         
