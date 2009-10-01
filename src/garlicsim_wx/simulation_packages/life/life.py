@@ -1,9 +1,14 @@
+# Copyright 2009 Ram Rachum.
+# This program is not licensed for distribution and may not be distributed.
+
 import garlicsim.data_structures
 import random
 import warnings
 
 #import psyco
 #psyco.full()
+
+
 
 def step(sourcestate,*args,**kwargs):
     oldboard=sourcestate.board

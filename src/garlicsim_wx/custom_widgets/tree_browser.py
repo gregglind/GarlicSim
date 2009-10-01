@@ -1,3 +1,6 @@
+# Copyright 2009 Ram Rachum.
+# This program is not licensed for distribution and may not be distributed.
+
 """
 todo: I think the refresh should be made more efficient
 
@@ -48,7 +51,7 @@ class TreeBrowser(ScrolledPanel):
 
 
     def OnPaint(self,e):
-        if self.gui_project==None or self.gui_project.project.tree==None or self.gui_project.project.tree.roots==[]:
+        if self.gui_project==None or self.gui_project.project.tree==None or len(self.gui_project.project.tree.roots)==0:
             return
 
 
@@ -130,7 +133,7 @@ class NiftyPaintDC(wx.PaintDC):
                 type="Active "+type
         elif isinstance(start,garlicsim.data_structures.Node):
             kids=start.children
-            if start.is_touched()==True:
+            if start.touched:
                 type="Touched"
             else:
                 type="Untouched"
@@ -140,7 +143,7 @@ class NiftyPaintDC(wx.PaintDC):
             raise StandardError
 
 
-        if make_block_stripe==True:
+        if make_block_stripe is True:
 
             bitmap=self.elements["Block"]
             self.DrawBitmapPoint(bitmap,point,useMask=True)
@@ -148,8 +151,8 @@ class NiftyPaintDC(wx.PaintDC):
             second_bitmap=self.elements[type]
 
             slice=[None,None]
-            length=float(len(start.list))
-            slice[0]=start.list.index(self.active_node)/length
+            length=float(len(start))
+            slice[0]=start.index(self.active_node)/length
             slice[1]=slice[0]+1/length
 
             screen_slice=[floor(point[0]+2+(bitmap_size[0]-4)*slice[0]),ceil(point[0]+2+(bitmap_size[0]-4)*slice[1])]
@@ -186,13 +189,16 @@ class NiftyPaintDC(wx.PaintDC):
         """
         assuming the tree has only one root!
         """
+        def get_root():
+            return tree.roots.__iter__().next()
+
         self.clickable_map={}
         self.active_node=self.gui_project.active_node
         try:
             self.active_soft_block=self.active_node.soft_get_block()
         except AttributeError:
             self.active_soft_block=None
-        size=self.draw_sub_tree(vectorish.add((connector_length,connector_length),self.origin),tree,tree.roots[0].soft_get_block())
+        size=self.draw_sub_tree(vectorish.add((connector_length,connector_length),self.origin),tree,get_root().soft_get_block())
         (width,height)=vectorish.add(size,(connector_length,connector_length))
         return (self.clickable_map,(width,height))
 
