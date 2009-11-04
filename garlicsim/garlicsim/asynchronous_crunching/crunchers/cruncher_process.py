@@ -16,12 +16,11 @@ import Queue
 import sys
 import os
 
-try: import garlicsim.general_misc.process_priority
+try: from ...general_misc import process_priority
 except Exception: pass
 
 import garlicsim
-from garlicsim.asynchronous_crunching import \
-     CrunchingProfile, ObsoleteCruncherError
+from .. import CrunchingProfile, ObsoleteCruncherError
 
 __all__ = ["CruncherProcess"]
 

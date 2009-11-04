@@ -6,15 +6,15 @@ This module defines the HistoryBrowser class. See its documentation for more
 information.
 '''
 
-import garlicsim.general_misc.binary_search as binary_search
-import garlicsim.general_misc.queue_tools as queue_tools
-import garlicsim.misc.history_browser
+from ..general_misc import binary_search
+from ..general_misc import queue_tools
+from .. import misc
 
 __all__ = ["HistoryBrowser"]
 
 get_state_clock = lambda state: state.clock
 
-class HistoryBrowser(garlicsim.misc.history_browser.HistoryBrowser):
+class HistoryBrowser(garlicsim.misc.HistoryBrowser):
     '''
     A history browser is a device for requesting states from the timeline of
     the simulation. It is relevant only to simulations that are

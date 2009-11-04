@@ -6,7 +6,7 @@ This module defines the CrunchingManager class. See its documentation for more
 information.
 '''
 
-import garlicsim.general_misc.queue_tools as queue_tools
+from ..general_misc import queue_tools
 import garlicsim.general_misc.third_party.decorator
 import garlicsim.general_misc.change_tracker
 from garlicsim.general_misc.infinity import Infinity

@@ -27,7 +27,7 @@ def with_self(method, *args, **kwargs):
     with self:
         return method(*args, **kwargs)
 
-class HistoryBrowser(garlicsim.misc.history_browser.HistoryBrowser):
+class HistoryBrowser(garlicsim.misc.HistoryBrowser):
     '''
     A HistoryBrowser is a device for requesting information about the history
     of the simulation. It is intended to be used by CruncherThread in
